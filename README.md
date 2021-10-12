@@ -188,26 +188,28 @@ This should overwrite ONLY fields that are not set as `null`, and leave alone al
 Instead, it should be only changing fields that were sent with a non-`null` value. And for some reason, record #9 has longitude instead of city being set. 
 
 This despite logging from Kafka Connect worker on what's being sent as a record indicating that keys and values seem to be correct:
->>>
-=================
-id: 10
-address_line1: <null>
-address_line2: <null>
-city: Los Angeles
-country: <null>
-county: Lincoln
-latitude: <null>
-longitude: -10.3
-state: <null>
-zipcode: <null>
-=================
+```
+docker logs -f kafka-connect-smt-remove-null-fields_kafka-connect-avro_1 --since 5m
+```
 
-updated schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
-
-record value: Struct{id=10,city=Los Angeles,county=Lincoln,longitude=-10.3}
-
-record schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
-<<<
+> =================
+> id: 10
+> address_line1: <null>
+> address_line2: <null>
+> city: Los Angeles
+> country: <null>
+> county: Lincoln
+> latitude: <null>
+> longitude: -10.3
+> state: <null>
+> zipcode: <null>
+> =================
+> 
+> updated schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
+> 
+> record value: Struct{id=10,city=Los Angeles,county=Lincoln,longitude=-10.3}
+> 
+> record schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
 
 
 
