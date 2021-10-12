@@ -118,6 +118,9 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
         System.out.println(field.name() + ": " + value.get(field).toString());
       } else {
         System.out.println(field.name() + ": " + "<null>");
+        //testing code. 
+        //adding this in brings us back to original behavior: everything erased except for fields that are explicitly set. 
+        //builder.field(field.name(), field.schema());
       }
     }
     System.out.println("=================");
