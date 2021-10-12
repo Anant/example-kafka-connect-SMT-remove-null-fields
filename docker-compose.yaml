@@ -1,0 +1,150 @@
+# for running kafka services and ES for testing this SMT
+# Using confluent version 5.5.x since we originally tested for an env using Kafka 2.3 and Kafka Connect 2.5
+---
+version: '2'
+services:
+  ###
+  ### ZOOKEEPER
+  ###
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.5.6
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  ###
+  ### BROKER
+  ###
+  broker:
+    image: confluentinc/cp-server:5.5.6
+    hostname: broker
+    depends_on:
+      - "zookeeper"
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://broker:9092
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:29092
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+
+  ###
+  ### KAFKA-HQ
+  ###
+  kafka-hq:
+    image: tchiotludo/akhq
+    depends_on:
+      - "broker"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          server:
+            access-log:
+              enabled: true
+              name: org.akhq.log.access # Logger name
+              format: "[Date: {}] [Duration: {} ms] [Url: {} {} {}] [Status: {}] [Ip: {}] [Length: {}] [Port: {}]" # Logger format
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "broker:9092"
+              schema-registry:
+                url: "http://schema-registry:8081"
+              connect:
+                - name: kafka-connect-1
+                  url: "http://kafka-connect:8083"
+    ports:
+      - "8085:8080"
+
+  ###
+  ### SCHEMA-REGISTRY
+  ###
+  schema-registry:
+    image: confluentinc/cp-schema-registry:5.5.6
+    hostname: schema-registry
+    depends_on:
+      - broker
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:29092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+  ###
+  ### KAFKA-CONNECT
+  ###
+  kafka-connect-avro:
+    image: confluentinc/cp-kafka-connect:5.5.6
+    hostname: kafka-connect
+    depends_on:
+      - zookeeper
+      - broker
+      - schema-registry
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: 'broker:9092'
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: "docker-connect-group"
+      CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-config
+      CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_SERIALIZER: io.confluent.kafka.serializers.KafkaAvroSerializer
+      CONNECT_VALUE_SERIALIZER: io.confluent.kafka.serializers.KafkaAvroSerializer
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+      CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      CONNECT_LOG4J_LOGGERS: 'org.reflections=ERROR'
+      CONNECT_PLUGIN_PATH: /usr/share/java,/etc/kafka-connect/jars
+    volumes:
+      - ./tmp/jars:/etc/kafka-connect/jars
+
+  ###
+  ### ELASTICSEARCH
+  ###
+  smt-test-es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.0
+    container_name: smt-test-es01
+    hostname: smt-test-es01
+    environment:
+      - node.name=smt-test-es01
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=smt-test-es01
+      - cluster.initial_master_nodes=smt-test-es01
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    # just doing without volumes for now, this is just for dev
+    #volumes:
+    #  - data01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200

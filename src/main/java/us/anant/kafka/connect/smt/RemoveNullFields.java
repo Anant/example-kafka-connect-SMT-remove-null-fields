@@ -89,23 +89,45 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
   private R applyWithSchema(R record) {
     final Struct value = requireStruct(operatingValue(record), PURPOSE);
 
-    Schema updatedSchema = schemaUpdateCache.get(value.schema());
-    if(updatedSchema == null) {
-      updatedSchema = makeUpdatedSchema(value.schema());
-      schemaUpdateCache.put(value.schema(), updatedSchema);
-    }
 
-    final Struct updatedValue = new Struct(updatedSchema);
+    // TODO need to look into best way to do this, for best performance. Manually creating schema each time might really slow things down
+    // I'm not yet sure how the cache works, or what exactly is returned wshen using e.g., value.schema()
+    // for now, not using schema caching, since I'm not sure how we'd do that with a dynamic schema like this. I'm not sure if any other SMT has schema that could potentially change with every record like ours does. 
+    Schema existingSchema = value.schema();
 
-    for (Field field : value.schema().fields()) {
-      // check if value is null. If null, don't set field in record. 
+    // Schema updatedSchema = schemaUpdateCache.get(value.schema());
+		// if (updatedSchema == null) {
+		// 		updatedSchema = makeUpdatedSchema(value.schema());
+		// 		schemaUpdateCache.put(value.schema(), updatedSchema);
+		// }
+
+    final SchemaBuilder builder = SchemaUtil.copySchemaBasics(existingSchema, SchemaBuilder.struct());
+
+    final Struct updatedValue = new Struct(existingSchema);
+
+    for (Field field : existingSchema.fields()) {
+      // check if value is null. If null, don't set field in record or schema
       // If value not null, set field to new record without changing
+      System.out.println("key: " + field.name());
       if (value.get(field) != null) {
+        // set key and value for field on this record
         updatedValue.put(field.name(), value.get(field));
+        // set field on schema also
+        builder.field(field.name(), field.schema());
+        System.out.println("it was NOT null");
+        System.out.println("value: " + value.get(field).toString());
+      } else {
+        System.out.println("it was null");
       }
     }
 
-    return newRecord(record, updatedSchema, updatedValue);
+    Schema updatedSchema = builder.build();
+    System.out.println("schema: " + updatedSchema.toString());
+
+
+    R updatedRecord = newRecord(record, updatedSchema, updatedValue);
+        System.out.println("record: " + updatedRecord.toString());
+    return updatedRecord;
   }
 
   @Override
