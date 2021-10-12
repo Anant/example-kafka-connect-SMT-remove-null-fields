@@ -105,28 +105,32 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
 
     final Struct updatedValue = new Struct(existingSchema);
 
+    System.out.println("\n");
+    System.out.println("=================");
     for (Field field : existingSchema.fields()) {
       // check if value is null. If null, don't set field in record or schema
       // If value not null, set field to new record without changing
-      System.out.println("key: " + field.name());
       if (value.get(field) != null) {
         // set key and value for field on this record
         updatedValue.put(field.name(), value.get(field));
         // set field on schema also
         builder.field(field.name(), field.schema());
-        System.out.println("it was NOT null");
-        System.out.println("value: " + value.get(field).toString());
+        System.out.println(field.name() + ": " + value.get(field).toString());
       } else {
-        System.out.println("it was null");
+        System.out.println(field.name() + ": " + "<null>");
       }
     }
+    System.out.println("=================");
 
     Schema updatedSchema = builder.build();
-    System.out.println("schema: " + updatedSchema.toString());
+    System.out.println("\nupdated schema fields: " + updatedSchema.fields().toString());
 
 
     R updatedRecord = newRecord(record, updatedSchema, updatedValue);
-        System.out.println("record: " + updatedRecord.toString());
+    // gives too much info
+    //System.out.println("\nrecord: " + updatedRecord.toString());
+    System.out.println("\nrecord value: " + updatedRecord.value().toString());
+    System.out.println("\nrecord schema fields: " + updatedRecord.valueSchema().fields().toString());
     return updatedRecord;
   }
 
