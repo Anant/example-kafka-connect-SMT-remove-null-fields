@@ -210,10 +210,5 @@ docker logs -f kafka-connect-smt-remove-null-fields_kafka-connect-avro_1 --since
 > record schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
 
 
-
-
-# TODOs
-- Allow for when there's no schema
-
 # Credits
 Based heavily upon https://github.com/confluentinc/kafka-connect-insert-uuid and [Apache Kafka® `ReplaceField` SMT](https://github.com/apache/kafka/blob/trunk/connect/transforms/src/main/java/org/apache/kafka/connect/transforms/ReplaceField.java)
