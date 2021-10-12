@@ -1,18 +1,21 @@
 Kafka Connect SMT to remove all keys/values in an avro record that have value of `null`.
 
 
-Use cases:
+## Use cases:
 - Elasticsearch connector, so that it doesn't overwrite all unset fields with `null` values, which allows you to send partial records through without setting all unset values to `null`.
 
-Properties:
+## Properties to configure:
 
 |Name|Description|Type|Default|Importance|
 |---|---|---|---|---|
 ||  |  |  |  |
 
-Example on how to add to your connector:
+(so far there's none)
+
+## Example on how to add to your connector:
 ```
 transforms=removenullfields
+transforms.removenullfields.type=us.anant.kafka.connect.smt.RemoveNullFields$Value
 ```
 
 # TODOs
