@@ -192,7 +192,6 @@ This despite logging from Kafka Connect worker on what's being sent as a record 
 docker logs -f kafka-connect-smt-remove-null-fields_kafka-connect-avro_1 --since 5m
 ```
 
-> =================
 > id: 10
 > address_line1: <null>
 > address_line2: <null>
@@ -203,7 +202,6 @@ docker logs -f kafka-connect-smt-remove-null-fields_kafka-connect-avro_1 --since
 > longitude: -10.3
 > state: <null>
 > zipcode: <null>
-> =================
 > 
 > updated schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
 > 
