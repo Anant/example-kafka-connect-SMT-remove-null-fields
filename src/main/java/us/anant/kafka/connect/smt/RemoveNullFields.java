@@ -177,8 +177,6 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
     */
 
     private R applyWithSchema(R record) {
-        System.out.println("\n");
-        System.out.println("=================");
         final Struct value = requireStruct(operatingValue(record), PURPOSE);
 
         // Doing without caching for now, since schema changes for each record
@@ -194,20 +192,18 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
 
         final Struct updatedValue = new Struct(updatedSchema);
 
-        for (Field field : updatedSchema.fields()) {
+        for (Field field : originalSchema.fields()) {
             // set key and value for field in record, unless value of field for this record is null
+            if (value.get(field) != null) {
                 final Object fieldValue = value.get(field.name());
                 updatedValue.put(field.name(), fieldValue);
                 System.out.println(field.name() + ": " + value.get(field).toString());
+            } else {
+                System.out.println(field.name() + ": " + "<null>");
+            }
         }
 
-        System.out.println("=================");
-        System.out.println("\nupdated schema fields: " + updatedSchema.fields().toString());
-        // gives too much info
-        //System.out.println("\nrecord: " + updatedRecord.toString());
         R updatedRecord = newRecord(record, updatedSchema, updatedValue);
-        System.out.println("\nrecord value: " + updatedRecord.value().toString());
-        System.out.println("\nrecord schema fields: " + updatedRecord.valueSchema().fields().toString());
 
         return updatedRecord;
     }
