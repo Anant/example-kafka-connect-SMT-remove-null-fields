@@ -27,10 +27,10 @@ sysctl -w vm.max_map_count=262144
 docker-compose up -d
 
 ##################
-# setup kafka topic 
+# setup kafka topic for the connector to consume from
 docker-compose exec kafka-connect-smt-remove-null-fields_broker_1 kafka-topics --create --topic example-topic-avro --bootstrap-server broker:9092 --replication-factor 1 --partitions 1
 
-# confirm
+# confirm topic creation
 docker-compose exec kafka-connect-smt-remove-null-fields_broker_1 kafka-topics --list
 
 ##################
@@ -95,7 +95,7 @@ Then in the producer, send some records, e.g.,
 curl localhost:9200/index_1/_search?pretty
 
 ```
-#### Current (incorrect) behavior:
+#### Result after initial insert:
 ```
 {
         "_index" : "index_1",
@@ -129,11 +129,10 @@ curl localhost:9200/index_1/_search?pretty
           "county" : "Jefferson",
           "latitude" : "-25",
           "longitude" : "23",
-          "zipcode" : null
+          "zipcode" : "97000"
         }
       }
 ```
-For whatever reason, any record that has one or more fields not set, that field is not set (which is right), but zipcode also doesn't work (e.g., record with id=9 above)
 
 ## Then send partial record, and see what gets overwritten and what doesn't
 ```
@@ -143,7 +142,7 @@ For whatever reason, any record that has one or more fields not set, that field 
 
 This should overwrite ONLY fields that are not set as `null`, and leave alone all other fields. 
 
-#### Current (incorrect) behavior:
+#### Result after upsert:
 ```
 {
         "_index" : "index_1",
@@ -158,9 +157,9 @@ This should overwrite ONLY fields that are not set as `null`, and leave alone al
           "country" : "U.S.A.",
           "county" : null,
           "latitude" : "-25",
-          "longitude" : null,
+          "longitude" : "-10.3",
           "state" : "CA",
-          "zipcode" : null
+          "zipcode" : "12345"
         }
       },
       {
@@ -172,62 +171,15 @@ This should overwrite ONLY fields that are not set as `null`, and leave alone al
           "id" : "9",
           "address_line1" : "400 8th st.",
           "address_line2" : "# 400",
-          "city" : null,
+          "city" : "Los Angeles",
           "country" : "U.S.A.",
-          "county" : null,
+          "county" : "Lincoln",
           "latitude" : "-25",
-          "longitude" : "Los Angeles",
-          "zipcode" : null
+          "longitude" : "-10.3",
+          "zipcode" : "97000"
         }
       }
 ```
 
-Instead, it should be only changing fields that were sent with a non-`null` value. And for some reason, record #9 has longitude instead of city being set. 
-
-This despite logging from Kafka Connect worker on what's being sent as a record indicating that keys and values seem to be correct:
-```
-docker logs -f kafka-connect-smt-remove-null-fields_kafka-connect-avro_1 --since 5m
-```
-
-> id: 10
-> address_line1: <null>
-> address_line2: <null>
-> city: Los Angeles
-> country: <null>
-> county: Lincoln
-> latitude: <null>
-> longitude: -10.3
-> state: <null>
-> zipcode: <null>
-> 
-> updated schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
-> 
-> record value: Struct{id=10,city=Los Angeles,county=Lincoln,longitude=-10.3}
-> 
-> record schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
-
-## Check Schemas that get created
-#### Find All subjects:
-```
-# port 8081 of schema registry is exposed, so you can call from docker host
-curl localhost:8081/subjects
-```
-Result should be: 
-> ["example-topic-avro-value"]
-
-#### Find schemas that get created
-```
-# get all version ids
-curl localhost:8081/subjects/example-topic-avro-value/versions/
-
-# using example given above, there should only be one
-curl localhost:8081/subjects/example-topic-avro-value/versions/1
-```
-
-Result should be: 
-> {"subject":"example-topic-avro-value","version":1,"id":1,"schema":"{\"type\":\"record\",\"name\":\"location\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"address_line1\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"address_line2\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"city\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"country\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"county\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"latitude\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"longitude\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"state\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"zipcode\",\"type\":[\"null\",\"string\"],\"default\":null}]}"}
-
-In other words, schema in schema registry should not be affected by this SMT - or any sink SMT! This only changes what gets sent along
-
 # Credits
-Based heavily upon https://github.com/confluentinc/kafka-connect-insert-uuid and [Apache Kafka® `ReplaceField` SMT](https://github.com/apache/kafka/blob/trunk/connect/transforms/src/main/java/org/apache/kafka/connect/transforms/ReplaceField.java). At this point, more the latter than the former. 
+Based heavily upon https://github.com/confluentinc/kafka-connect-insert-uuid and [Apache Kafka® `ReplaceField` SMT](https://github.com/apache/kafka/blob/trunk/connect/transforms/src/main/java/org/apache/kafka/connect/transforms/ReplaceField.java)
