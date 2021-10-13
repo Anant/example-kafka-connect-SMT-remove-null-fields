@@ -189,20 +189,16 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
         // }
         Schema updatedSchema = makeUpdatedSchema(value.schema(), value);
 
-        // set this so can iterate over fields
+        // set this so can iterate over original fields, not fields after some get removed
         Schema originalSchema = value.schema();
 
         final Struct updatedValue = new Struct(updatedSchema);
 
-        for (Field field : originalSchema.fields()) {
+        for (Field field : updatedSchema.fields()) {
             // set key and value for field in record, unless value of field for this record is null
-            if (value.get(field) != null) {
                 final Object fieldValue = value.get(field.name());
                 updatedValue.put(field.name(), fieldValue);
                 System.out.println(field.name() + ": " + value.get(field).toString());
-            } else {
-                System.out.println(field.name() + ": " + "<null>");
-            }
         }
 
         System.out.println("=================");
