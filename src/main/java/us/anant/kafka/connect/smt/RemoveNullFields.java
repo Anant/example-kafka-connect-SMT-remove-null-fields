@@ -177,13 +177,17 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
     */
 
     private R applyWithSchema(R record) {
+    System.out.println("\n");
+    System.out.println("=================");
         final Struct value = requireStruct(operatingValue(record), PURPOSE);
 
-        Schema updatedSchema = schemaUpdateCache.get(value.schema());
-        if (updatedSchema == null) {
-            updatedSchema = makeUpdatedSchema(value.schema(), value);
-            schemaUpdateCache.put(value.schema(), updatedSchema);
-        }
+        // Doing without caching for now, since schema changes for each record
+        // Schema updatedSchema = schemaUpdateCache.get(value.schema());
+        // if (updatedSchema == null) {
+        //     updatedSchema = makeUpdatedSchema(value.schema(), value);
+        //     schemaUpdateCache.put(value.schema(), updatedSchema);
+        // }
+        Schema updatedSchema = makeUpdatedSchema(value.schema(), value);
 
         final Struct updatedValue = new Struct(updatedSchema);
 
@@ -192,10 +196,21 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
             if (value.get(field) != null) {
                 final Object fieldValue = value.get(field.name());
                 updatedValue.put(field.name(), fieldValue);
+                System.out.println(field.name() + ": " + value.get(field).toString());
+            } else {
+                System.out.println(field.name() + ": " + "<null>");
             }
         }
 
-        return newRecord(record, updatedSchema, updatedValue);
+        System.out.println("=================");
+        System.out.println("\nupdated schema fields: " + updatedSchema.fields().toString());
+        // gives too much info
+        //System.out.println("\nrecord: " + updatedRecord.toString());
+        R updatedRecord = newRecord(record, updatedSchema, updatedValue);
+        System.out.println("\nrecord value: " + updatedRecord.value().toString());
+        System.out.println("\nrecord schema fields: " + updatedRecord.valueSchema().fields().toString());
+
+        return updatedRecord;
     }
 
     private Schema makeUpdatedSchema(Schema schema, Struct value) {
