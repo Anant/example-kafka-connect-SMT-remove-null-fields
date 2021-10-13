@@ -155,7 +155,7 @@ This should overwrite ONLY fields that are not set as `null`, and leave alone al
           "address_line2" : "# 400",
           "city" : "Portland",
           "country" : "U.S.A.",
-          "county" : null,
+          "county" : "Lincoln",
           "latitude" : "-25",
           "longitude" : "-10.3",
           "state" : "CA",
