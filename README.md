@@ -77,14 +77,11 @@ curl localhost:8083/connectors/elasticsearch-sink/status
 ## Send some records
 
 ```
-# copy over sample avro schema
-docker cp ./testing/location.avsc  kafka-connect-smt-remove-null-fields_schema-registry_1:/opt/location.avsc
-
 # start producer
 docker exec -it kafka-connect-smt-remove-null-fields_schema-registry_1 kafka-avro-console-producer \
 --topic example-topic-avro \
 --bootstrap-server broker:9092 \
---property value.schema="$(< /opt/location.avsc)"
+--property value.schema="$(< ./testing/location.avsc)"
 ```
 
 Then in the producer, send some records, e.g., 
@@ -209,6 +206,28 @@ docker logs -f kafka-connect-smt-remove-null-fields_kafka-connect-avro_1 --since
 > 
 > record schema fields: [Field{name=id, index=0, schema=Schema{STRING}}, Field{name=city, index=1, schema=Schema{STRING}}, Field{name=county, index=2, schema=Schema{STRING}}, Field{name=longitude, index=3, schema=Schema{STRING}}]
 
+## Check Schemas that get created
+#### Find All subjects:
+```
+# port 8081 of schema registry is exposed, so you can call from docker host
+curl localhost:8081/subjects
+```
+Result should be: 
+> ["example-topic-avro-value"]
+
+#### Find schemas that get created
+```
+# get all version ids
+curl localhost:8081/subjects/example-topic-avro-value/versions/
+
+# using example given above, there should only be one
+curl localhost:8081/subjects/example-topic-avro-value/versions/1
+```
+
+Result should be: 
+> {"subject":"example-topic-avro-value","version":1,"id":1,"schema":"{\"type\":\"record\",\"name\":\"location\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"address_line1\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"address_line2\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"city\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"country\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"county\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"latitude\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"longitude\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"state\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"zipcode\",\"type\":[\"null\",\"string\"],\"default\":null}]}"}
+
+In other words, schema in schema registry should not be affected by this SMT - or any sink SMT! This only changes what gets sent along
 
 # Credits
-Based heavily upon https://github.com/confluentinc/kafka-connect-insert-uuid and [Apache Kafka® `ReplaceField` SMT](https://github.com/apache/kafka/blob/trunk/connect/transforms/src/main/java/org/apache/kafka/connect/transforms/ReplaceField.java)
+Based heavily upon https://github.com/confluentinc/kafka-connect-insert-uuid and [Apache Kafka® `ReplaceField` SMT](https://github.com/apache/kafka/blob/trunk/connect/transforms/src/main/java/org/apache/kafka/connect/transforms/ReplaceField.java). At this point, more the latter than the former. 
