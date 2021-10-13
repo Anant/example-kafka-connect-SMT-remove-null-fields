@@ -197,9 +197,6 @@ public abstract class RemoveNullFields<R extends ConnectRecord<R>> implements Tr
             if (value.get(field) != null) {
                 final Object fieldValue = value.get(field.name());
                 updatedValue.put(field.name(), fieldValue);
-                System.out.println(field.name() + ": " + value.get(field).toString());
-            } else {
-                System.out.println(field.name() + ": " + "<null>");
             }
         }
 
